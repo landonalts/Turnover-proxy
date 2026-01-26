@@ -1,18 +1,13 @@
-<!DOCTYPE html>
-<html>
-<body>
-  <h1>Proxy</h1>
-  <input id="url" placeholder="https://example.com">
-  <button onclick="go()">Go</button>
+<script>
+function go() {
+  let url = document.getElementById("url").value.trim();
+  if (!url.startsWith("http")) {
+    url = "https://" + url;
+  }
 
-  <iframe id="frame" style="width:100%;height:90vh;"></iframe>
-
-  <script>
-    function go() {
-      const url = document.getElementById("url").value;
-      document.getElementById("frame").src =
-        "/api/proxy?url=" + encodeURIComponent(url);
-    }
-  </script>
-</body>
-</html>
+  window.open(
+    "/api/proxy?url=" + encodeURIComponent(url),
+    "_blank"
+  );
+}
+</script>
