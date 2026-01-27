@@ -18,31 +18,46 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.3s ease;
+    }
+
+    body.dark {
+      background: linear-gradient(135deg, #0f172a, #020617);
     }
 
     .card {
       background: white;
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       padding: 28px;
       border-radius: 16px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    body.dark .card {
+      background: #020617;
+      color: #e5e7eb;
     }
 
     h1 {
-      margin: 0 0 8px;
+      margin: 0 0 6px;
       font-size: 1.5rem;
     }
 
     p {
       margin: 0 0 20px;
       color: #6b7280;
-      font-size: 0.95rem;
+    }
+
+    body.dark p {
+      color: #94a3b8;
     }
 
     .row {
       display: flex;
       gap: 10px;
+      margin-bottom: 22px;
     }
 
     input {
@@ -50,6 +65,13 @@
       padding: 12px;
       border-radius: 10px;
       border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+
+    body.dark input {
+      background: #020617;
+      border-color: #1e293b;
+      color: #e5e7eb;
     }
 
     button {
@@ -64,6 +86,49 @@
     button:hover {
       background: #2563eb;
     }
+
+    /* SETTINGS */
+
+    .settings {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    body.dark .settings {
+      border-color: #1e293b;
+    }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .profile img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .toggle {
+      padding: 8px 14px;
+      font-size: 13px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #111827;
+      cursor: pointer;
+      border: none;
+    }
+
+    body.dark .toggle {
+      background: #1e293b;
+      color: #e5e7eb;
+    }
   </style>
 </head>
 <body>
@@ -75,6 +140,16 @@
   <div class="row">
     <input id="url" placeholder="example.com">
     <button onclick="openSite()">Open</button>
+  </div>
+
+  <!-- SETTINGS SECTION -->
+  <div class="settings">
+    <div class="profile">
+      <img src="https://i.imgur.com/8Km9tLL.png" alt="profile">
+      <span>Settings</span>
+    </div>
+
+    <button class="toggle" onclick="toggleTheme()">Light / Dark</button>
   </div>
 </div>
 
@@ -88,6 +163,19 @@ function openSite() {
     "/api/proxy?url=" + encodeURIComponent(url),
     "_blank"
   );
+}
+
+function toggleTheme() {
+  document.body.classList.toggle("dark");
+  localStorage.setItem(
+    "theme",
+    document.body.classList.contains("dark") ? "dark" : "light"
+  );
+}
+
+// remember theme
+if (localStorage.getItem("theme") === "dark") {
+  document.body.classList.add("dark");
 }
 </script>
 
