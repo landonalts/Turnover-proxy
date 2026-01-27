@@ -18,7 +18,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.3s ease;
+      transition: background 0.3s;
     }
 
     body.dark {
@@ -32,7 +32,7 @@
       padding: 28px;
       border-radius: 16px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-      transition: background 0.3s ease, color 0.3s ease;
+      transition: background 0.3s, color 0.3s;
     }
 
     body.dark .card {
@@ -57,7 +57,7 @@
     .row {
       display: flex;
       gap: 10px;
-      margin-bottom: 22px;
+      margin-bottom: 18px;
     }
 
     input {
@@ -65,7 +65,6 @@
       padding: 12px;
       border-radius: 10px;
       border: 1px solid #d1d5db;
-      font-size: 14px;
     }
 
     body.dark input {
@@ -87,42 +86,73 @@
       background: #2563eb;
     }
 
-    /* SETTINGS */
-
-    .settings {
-      border-top: 1px solid #e5e7eb;
-      padding-top: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
+    .settings-btn {
+      width: 100%;
+      margin-top: 10px;
+      background: #e5e7eb;
+      color: #111827;
     }
 
-    body.dark .settings {
-      border-color: #1e293b;
+    body.dark .settings-btn {
+      background: #1e293b;
+      color: #e5e7eb;
+    }
+
+    /* SETTINGS MODAL */
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      width: 90%;
+      max-width: 360px;
+      padding: 22px;
+      border-radius: 14px;
+    }
+
+    body.dark .modal {
+      background: #020617;
+      color: #e5e7eb;
     }
 
     .profile {
       display: flex;
       align-items: center;
       gap: 12px;
+      margin-bottom: 16px;
     }
 
-    .profile img {
-      width: 40px;
-      height: 40px;
+    .avatar {
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
-      object-fit: cover;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
     }
 
     .toggle {
-      padding: 8px 14px;
-      font-size: 13px;
-      border-radius: 999px;
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
       background: #e5e7eb;
-      color: #111827;
-      cursor: pointer;
       border: none;
+      cursor: pointer;
+      margin-bottom: 10px;
     }
 
     body.dark .toggle {
@@ -142,14 +172,19 @@
     <button onclick="openSite()">Open</button>
   </div>
 
-  <!-- SETTINGS SECTION -->
-  <div class="settings">
+  <button class="settings-btn" onclick="openSettings()">Settings</button>
+</div>
+
+<!-- SETTINGS UI -->
+<div class="overlay" id="settings">
+  <div class="modal">
     <div class="profile">
-      <img src="https://i.imgur.com/8Km9tLL.png" alt="profile">
-      <span>Settings</span>
+      <div class="avatar">L</div>
+      <strong>Settings</strong>
     </div>
 
-    <button class="toggle" onclick="toggleTheme()">Light / Dark</button>
+    <button class="toggle" onclick="toggleTheme()">Light / Dark Mode</button>
+    <button class="toggle" onclick="closeSettings()">Close</button>
   </div>
 </div>
 
@@ -163,6 +198,14 @@ function openSite() {
     "/api/proxy?url=" + encodeURIComponent(url),
     "_blank"
   );
+}
+
+function openSettings() {
+  document.getElementById("settings").classList.add("show");
+}
+
+function closeSettings() {
+  document.getElementById("settings").classList.remove("show");
 }
 
 function toggleTheme() {
