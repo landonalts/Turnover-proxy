@@ -1,9 +1,6 @@
 export default async function handler(req, res) {
   const target = req.query.url;
-
-  if (!target) {
-    return res.status(400).send("Missing url parameter");
-  }
+  if (!target) return res.status(400).send("Missing url");
 
   let url;
   try {
@@ -26,98 +23,104 @@ export default async function handler(req, res) {
 
     const contentType = response.headers.get("content-type") || "";
 
-    /* ---------- HANDLE NON-HTML (images, css, js) ---------- */
+    // Serve non-HTML normally (images, css, js)
     if (!contentType.includes("text/html")) {
       res.setHeader("Content-Type", contentType);
-      res.status(response.status);
       return res.send(Buffer.from(await response.arrayBuffer()));
     }
 
-    const body = await response.text();
+    let body = await response.text();
 
-    /* ---------- CLOUDFLARE / CAPTCHA DETECTION ---------- */
+    // Cloudflare detection
     const isCloudflare =
       body.includes("cf-browser-verification") ||
       body.includes("cf-challenge") ||
       body.includes("Just a moment") ||
-      body.includes("Checking your browser") ||
       response.headers.get("server")?.toLowerCase().includes("cloudflare");
 
     if (isCloudflare) {
       return res.status(403).send(`
 <!DOCTYPE html>
 <html>
-<head>
-<title>Verification Required</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #020617;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-}
-.box {
-  background: #020617;
-  border: 1px solid #1e293b;
-  padding: 24px;
-  border-radius: 14px;
-  max-width: 420px;
-  text-align: center;
-}
-button {
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: none;
-  background: #3b82f6;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-}
-</style>
-</head>
-<body>
-  <div class="box">
-    <h2>Cloudflare Protection</h2>
-    <p>
-      This website requires browser verification.<br>
-      Proxies cannot complete this automatically.
-    </p>
-    <button onclick="window.open('${url.toString()}', '_blank')">
-      Open Site Directly
-    </button>
-  </div>
+<body style="font-family:system-ui;background:#020617;color:white;
+display:flex;align-items:center;justify-content:center;height:100vh">
+<div>
+<h2>Cloudflare Protection</h2>
+<p>Open this site directly to verify.</p>
+<button onclick="window.open('${url}', '_blank')"
+style="padding:10px 14px;border-radius:10px;border:none;
+background:#3b82f6;color:white">Open Site</button>
+</div>
 </body>
 </html>
       `);
     }
 
-    /* ---------- BASIC URL REWRITE (keeps layout usable) ---------- */
-    let rewritten = body
+    // Inject proxy bar
+    const proxyBar = `
+<style>
+#__proxybar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42px;
+  background: #020617;
+  color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-family: system-ui, sans-serif;
+  z-index: 999999;
+}
+#__proxybar button {
+  background: #3b82f6;
+  border: none;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+body { margin-top: 42px !important; }
+</style>
+
+<div id="__proxybar">
+  <div>Proxy IP: <span id="proxy-ip">Loading…</span></div>
+  <button onclick="alert('Settings coming from main portal')">
+    Settings
+  </button>
+</div>
+
+<script>
+fetch('https://ipapi.co/ip/')
+  .then(r => r.text())
+  .then(ip => {
+    document.getElementById('proxy-ip').textContent = ip;
+  })
+  .catch(() => {
+    document.getElementById('proxy-ip').textContent = 'Unavailable';
+  });
+</script>
+`;
+
+    // Insert bar after <body>
+    body = body.replace(
+      /<body[^>]*>/i,
+      match => match + proxyBar
+    );
+
+    // Basic URL rewriting
+    body = body
       .replace(/href="\/(.*?)"/g, `href="/api/proxy?url=${url.origin}/$1"`)
       .replace(/src="\/(.*?)"/g, `src="/api/proxy?url=${url.origin}/$1"`);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(200).send(rewritten);
+    res.send(body);
 
   } catch (err) {
     console.error(err);
-    res.status(500).send(`
-<!DOCTYPE html>
-<html>
-<body style="font-family:system-ui;background:#020617;color:white;
-display:flex;align-items:center;justify-content:center;height:100vh">
-<div>
-<h2>Proxy Error</h2>
-<p>The site could not be loaded.</p>
-</div>
-</body>
-</html>
-    `);
+    res.status(500).send("Proxy error");
   }
 }
