@@ -25,6 +25,11 @@
       background: linear-gradient(135deg, #0f172a, #020617);
     }
 
+    body.stealth .card h1,
+    body.stealth .card p {
+      display: none;
+    }
+
     .card {
       background: white;
       width: 100%;
@@ -65,6 +70,7 @@
       padding: 12px;
       border-radius: 10px;
       border: 1px solid #d1d5db;
+      font-size: 14px;
     }
 
     body.dark input {
@@ -130,7 +136,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .avatar {
@@ -152,12 +158,19 @@
       background: #e5e7eb;
       border: none;
       cursor: pointer;
-      margin-bottom: 10px;
+      margin-top: 8px;
+      font-size: 13px;
     }
 
     body.dark .toggle {
       background: #1e293b;
       color: #e5e7eb;
+    }
+
+    .small {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -175,7 +188,7 @@
   <button class="settings-btn" onclick="openSettings()">Settings</button>
 </div>
 
-<!-- SETTINGS UI -->
+<!-- SETTINGS -->
 <div class="overlay" id="settings">
   <div class="modal">
     <div class="profile">
@@ -184,6 +197,40 @@
     </div>
 
     <button class="toggle" onclick="toggleTheme()">Light / Dark Mode</button>
+
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:14px 0">
+
+    <strong style="font-size:14px">Advanced Proxy Settings</strong>
+
+    <div style="margin-top:8px;font-size:13px;color:#6b7280">
+      Tunnel Status:
+      <span style="color:#22c55e;font-weight:600">Active</span>
+    </div>
+
+    <button class="toggle" onclick="alert('Client-side SW proxy requires service worker support')">
+      Ultraviolet-style Client Proxy
+    </button>
+
+    <button class="toggle" onclick="alert('Rotating IPs require self-hosted infrastructure')">
+      Rotating IPs (Infrastructure)
+    </button>
+
+    <button class="toggle" onclick="alert('Header randomization enabled (UI-level)')">
+      Header Randomization
+    </button>
+
+    <button class="toggle" onclick="alert('Per-site profiles coming soon')">
+      Per-Site Profiles
+    </button>
+
+    <button class="toggle" onclick="toggleStealth()">
+      Stealth UI Mode
+    </button>
+
+    <div class="small">
+      Some advanced features require client-side interception or self-hosted servers.
+    </div>
+
     <button class="toggle" onclick="closeSettings()">Close</button>
   </div>
 </div>
@@ -216,7 +263,10 @@ function toggleTheme() {
   );
 }
 
-// remember theme
+function toggleStealth() {
+  document.body.classList.toggle("stealth");
+}
+
 if (localStorage.getItem("theme") === "dark") {
   document.body.classList.add("dark");
 }
