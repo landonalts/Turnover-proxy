@@ -1,3 +1,5 @@
+import fetch from "node-fetch";
+
 export default async function handler(req, res) {
   const target = req.query.url;
   if (!target) return res.status(400).send("Missing url parameter");
@@ -10,6 +12,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Server-side proxy IP
+    let proxyIP = "Unavailable";
+    try {
+      const ipResp = await fetch("https://ipapi.co/ip/");
+      proxyIP = await ipResp.text();
+    } catch {}
+
+    // Fetch target page
     const response = await fetch(url.toString(), {
       headers: {
         "User-Agent":
@@ -23,7 +33,7 @@ export default async function handler(req, res) {
 
     const contentType = response.headers.get("content-type") || "";
 
-    // Serve non-HTML normally (images, css, js)
+    // Serve non-HTML normally
     if (!contentType.includes("text/html")) {
       res.setHeader("Content-Type", contentType);
       res.status(response.status);
@@ -44,55 +54,21 @@ export default async function handler(req, res) {
       return res.status(403).send(`
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Verification Required</title>
-<style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #020617;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-}
-.box {
-  background: #020617;
-  border: 1px solid #1e293b;
-  padding: 24px;
-  border-radius: 14px;
-  max-width: 420px;
-  text-align: center;
-}
-button {
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: none;
-  background: #3b82f6;
-  color: white;
-  cursor: pointer;
-}
-</style>
-</head>
-<body>
-  <div class="box">
-    <h2>Cloudflare Protection</h2>
-    <p>This site requires browser verification.</p>
-    <button onclick="window.open('${url.toString()}', '_blank')">
-      Open Site Directly
-    </button>
-  </div>
+<head><meta charset="UTF-8"><title>Verification Required</title></head>
+<body style="font-family:system-ui;background:#020617;color:white;
+display:flex;align-items:center;justify-content:center;height:100vh">
+<div style="text-align:center;">
+<h2>Cloudflare Protection</h2>
+<p>This site requires browser verification.</p>
+<button onclick="window.open('${url.toString()}', '_blank')">Open Site Directly</button>
+</div>
 </body>
 </html>
       `);
     }
 
-    // -------- PROXY BAR (GUARANTEED INJECTION) --------
-    const proxyBar = `
+    // -------- PROXY BAR + AJAX/Fetch/XHR REWRITE --------
+    const proxyScript = `
 <style>
 #__proxybar {
   position: fixed;
@@ -122,32 +98,50 @@ html { margin-top: 44px !important; }
 </style>
 
 <div id="__proxybar">
-  <div>Proxy IP: <span id="__proxyip">Loading…</span></div>
-  <button onclick="alert('Settings are available on the main portal')">
-    Settings
-  </button>
+  <div>Proxy IP: <span id="__proxyip">${proxyIP}</span></div>
+  <button onclick="alert('Settings are available on the main portal')">Settings</button>
 </div>
 
 <script>
-fetch('https://ipapi.co/ip/')
-  .then(r => r.text())
-  .then(ip => {
-    document.getElementById('__proxyip').textContent = ip;
-  })
-  .catch(() => {
-    document.getElementById('__proxyip').textContent = 'Unavailable';
-  });
+// Intercept fetch requests to route through proxy
+(function() {
+  const originalFetch = window.fetch;
+  window.fetch = function(input, init) {
+    let url = typeof input === 'string' ? input : input.url;
+    if (url.startsWith('http') && !url.includes(window.location.origin)) {
+      // Redirect through proxy
+      if (typeof input === 'string') input = '/api/proxy?url=' + encodeURIComponent(url);
+      else input = { ...input, url: '/api/proxy?url=' + encodeURIComponent(url) };
+    }
+    return originalFetch(input, init);
+  };
+
+  // Intercept XHR
+  const originalXHR = window.XMLHttpRequest;
+  function ProxyXHR() {
+    const xhr = new originalXHR();
+    const open = xhr.open;
+    xhr.open = function(method, url, ...args) {
+      if (url.startsWith('http') && !url.includes(window.location.origin)) {
+        url = '/api/proxy?url=' + encodeURIComponent(url);
+      }
+      return open.call(xhr, method, url, ...args);
+    };
+    return xhr;
+  }
+  window.XMLHttpRequest = ProxyXHR;
+})();
 </script>
 `;
 
-    // Inject BEFORE </html> (works even if <body> is weird)
+    // Inject proxyScript before </html>
     if (body.includes("</html>")) {
-      body = body.replace(/<\/html>/i, proxyBar + "</html>");
+      body = body.replace(/<\/html>/i, proxyScript + "</html>");
     } else {
-      body += proxyBar;
+      body += proxyScript;
     }
 
-    // Basic relative URL rewriting
+    // Rewrite basic relative URLs
     body = body
       .replace(/href="\/(.*?)"/g, `href="/api/proxy?url=${url.origin}/$1"`)
       .replace(/src="\/(.*?)"/g, `src="/api/proxy?url=${url.origin}/$1"`);
