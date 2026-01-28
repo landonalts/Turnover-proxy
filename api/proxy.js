@@ -10,7 +10,53 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Fetch the target page
+    // Detect if the site is Google search, Brave Search, or other heavy search engine
+    const isGoogleSearch = url.hostname.includes("google.com");
+    const isBraveSearch = url.hostname.includes("search.brave.com");
+    const isHeavySearch = isGoogleSearch || isBraveSearch;
+
+    // If heavy search engine, force open in new tab
+    if (isHeavySearch) {
+      return res.status(200).send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Open in New Tab</title>
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  background: #020617;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  text-align: center;
+}
+button {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<h2>Search Site</h2>
+<p>This search site must open in a new tab to work properly.</p>
+<button onclick="window.open('/api/proxy?url=${encodeURIComponent(
+        url.toString()
+      )}', '_blank')">Open Proxied</button>
+</body>
+</html>
+      `);
+    }
+
+    // Fetch the target page (normal lightweight site)
     const response = await fetch(url.toString(), {
       headers: {
         "User-Agent":
@@ -24,7 +70,7 @@ export default async function handler(req, res) {
 
     const contentType = response.headers.get("content-type") || "";
 
-    // Non-HTML resources (images, CSS, JS) → just return
+    // Serve non-HTML resources normally
     if (!contentType.includes("text/html")) {
       res.setHeader("Content-Type", contentType);
       res.status(response.status);
@@ -58,7 +104,7 @@ display:flex;align-items:center;justify-content:center;height:100vh">
       `);
     }
 
-    // Inject Proxy Bar
+    // -------- PROXY BAR INJECTION --------
     const proxyBar = `
 <style>
 #__proxybar {
@@ -116,7 +162,6 @@ fetch('https://ipapi.co/ip/')
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.status(200).send(body);
-
   } catch (err) {
     console.error(err);
     res.status(500).send(`
