@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
   const target = req.query.url;
   if (!target) return res.status(400).send("Missing url parameter");
@@ -12,14 +10,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Server-side proxy IP
-    let proxyIP = "Unavailable";
-    try {
-      const ipResp = await fetch("https://ipapi.co/ip/");
-      proxyIP = await ipResp.text();
-    } catch {}
-
-    // Fetch target page
+    // Fetch the target page
     const response = await fetch(url.toString(), {
       headers: {
         "User-Agent":
@@ -33,7 +24,7 @@ export default async function handler(req, res) {
 
     const contentType = response.headers.get("content-type") || "";
 
-    // Serve non-HTML normally
+    // Non-HTML resources (images, CSS, JS) → just return
     if (!contentType.includes("text/html")) {
       res.setHeader("Content-Type", contentType);
       res.status(response.status);
@@ -42,7 +33,7 @@ export default async function handler(req, res) {
 
     let body = await response.text();
 
-    // Cloudflare / CAPTCHA detection
+    // Detect Cloudflare / CAPTCHA
     const isCloudflare =
       body.includes("cf-browser-verification") ||
       body.includes("cf-challenge") ||
@@ -67,8 +58,8 @@ display:flex;align-items:center;justify-content:center;height:100vh">
       `);
     }
 
-    // -------- PROXY BAR + AJAX/Fetch/XHR REWRITE --------
-    const proxyScript = `
+    // Inject Proxy Bar
+    const proxyBar = `
 <style>
 #__proxybar {
   position: fixed;
@@ -98,50 +89,27 @@ html { margin-top: 44px !important; }
 </style>
 
 <div id="__proxybar">
-  <div>Proxy IP: <span id="__proxyip">${proxyIP}</span></div>
-  <button onclick="alert('Settings are available on the main portal')">Settings</button>
+  <div>Proxy IP: <span id="__proxyip">Loading…</span></div>
+  <button onclick="alert('Settings available on main portal')">Settings</button>
 </div>
 
 <script>
-// Intercept fetch requests to route through proxy
-(function() {
-  const originalFetch = window.fetch;
-  window.fetch = function(input, init) {
-    let url = typeof input === 'string' ? input : input.url;
-    if (url.startsWith('http') && !url.includes(window.location.origin)) {
-      // Redirect through proxy
-      if (typeof input === 'string') input = '/api/proxy?url=' + encodeURIComponent(url);
-      else input = { ...input, url: '/api/proxy?url=' + encodeURIComponent(url) };
-    }
-    return originalFetch(input, init);
-  };
-
-  // Intercept XHR
-  const originalXHR = window.XMLHttpRequest;
-  function ProxyXHR() {
-    const xhr = new originalXHR();
-    const open = xhr.open;
-    xhr.open = function(method, url, ...args) {
-      if (url.startsWith('http') && !url.includes(window.location.origin)) {
-        url = '/api/proxy?url=' + encodeURIComponent(url);
-      }
-      return open.call(xhr, method, url, ...args);
-    };
-    return xhr;
-  }
-  window.XMLHttpRequest = ProxyXHR;
-})();
+// Client-side fetch for proxy IP (safe)
+fetch('https://ipapi.co/ip/')
+  .then(r => r.text())
+  .then(ip => document.getElementById('__proxyip').textContent = ip)
+  .catch(() => document.getElementById('__proxyip').textContent = 'Unavailable');
 </script>
 `;
 
-    // Inject proxyScript before </html>
+    // Inject proxy bar before </html>
     if (body.includes("</html>")) {
-      body = body.replace(/<\/html>/i, proxyScript + "</html>");
+      body = body.replace(/<\/html>/i, proxyBar + "</html>");
     } else {
-      body += proxyScript;
+      body += proxyBar;
     }
 
-    // Rewrite basic relative URLs
+    // Basic relative URL rewriting
     body = body
       .replace(/href="\/(.*?)"/g, `href="/api/proxy?url=${url.origin}/$1"`)
       .replace(/src="\/(.*?)"/g, `src="/api/proxy?url=${url.origin}/$1"`);
